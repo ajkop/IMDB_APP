@@ -32,7 +32,7 @@ class KnownFor(db.Model):
 
 
 class Names(db.Model):
-    __tablename = 'names'
+    __tablename__ = 'names'
 
     id = db.Column(db.BigInteger, primary_key=True)
     name = db.Column(db.String(255))
