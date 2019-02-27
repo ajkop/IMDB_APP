@@ -15,7 +15,7 @@ class Titles(db.Model):
     num_rating = db.Column(db.Integer)
     runtime = db.Column(db.Integer, default=0)
     is_adult = db.Column(db.Boolean, default=False)
-    title_type = db.column(db.String(80))
+    title_type = db.Column(db.String(80))
     owned = db.Column(db.Boolean, default=False)
     last_modified = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

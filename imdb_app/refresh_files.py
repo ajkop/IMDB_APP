@@ -36,26 +36,38 @@ class RefreshFiles:
                 link_list.append(link_text)
         return link_list
 
-    def _download_files(self, file_links, needed_files=None):
-        parsed_files = {}
-        download_files = {}
+    def _get_files_to_download(self, file_links, needed_files=None):
+        found_file_map = {}
+        download_files_dict = {}
         for url in file_links:
             parsed_file = urlparse(url).path.strip('/')
-            unzipped_file_name = parsed_file.rstrip('.gz')
-            if needed_files:
-                if unzipped_file_name in needed_files:
-                    download_files = {url: {'parsed_file': parsed_file, 'unzipped_file_name': unzipped_file_name}}
-                    break
-                else:
-                    raise FileRefreshError(f'One or more of the requested files not on site: {parsed_file}')
-            else:
-                download_files.update({url: {'parsed_file': parsed_file, 'unzipped_file_name': unzipped_file_name}})
+            found_file_map.update({parsed_file.rstrip('.gz'): {'url': url, 'parsed_file': parsed_file}})
 
-        for url, values in download_files.items():
-            r = requests.get(url, allow_redirects=True)
-            with open(f'self.put_dir/file', 'wb') as write_file:
+        for unzipped, value_dict in found_file_map.items():
+            if needed_files:
+                if unzipped in needed_files:
+                    download_files_dict.update({unzipped: value_dict})
+            else:
+                download_files_dict.update({unzipped: value_dict})
+
+        # Ensure we collected all the requested files.
+        if needed_files:
+            if not all([needed_file in download_files_dict for needed_file in needed_files]):
+                raise FileRefreshError('One or more requested files were not found on the site.')
+
+        return download_files_dict
+
+    def _download_files(self, files_map):
+        parsed_files = {}
+
+        for unzipped, values in files_map.items():
+            zipped = values['parsed_file']
+            r = requests.get(values['url'], allow_redirects=True)
+
+            with open(f'{self.put_dir}/{zipped}', 'wb') as write_file:
                 write_file.write(r.content)
-            parsed_files.update({values['parsed_file']: values['unzipped_file_name']})
+
+            parsed_files.update({zipped: unzipped})
         return parsed_files
 
     def _unzip_files(self, file_map):
@@ -67,5 +79,6 @@ class RefreshFiles:
 
     def refresh(self, needed_files=None):
         file_links = self._get_links()
-        file_map = self._download_files(file_links, needed_files=needed_files)
+        download_files_map = self._get_files_to_download(file_links, needed_files=needed_files)
+        file_map = self._download_files(download_files_map)
         self._unzip_files(file_map)
